@@ -1,0 +1,209 @@
+---
+title: "Principal Component Analysis on Turtle Shells"
+author: "Antonio Mayorquin Galicia"
+date: "`r Sys.Date()`"
+output: html_document
+link: "https://rpubs.com/AntonioMG/1217473"
+---
+
+# Introduction to Principal Component Analysis (PCA)
+
+Principal Component Analysis (PCA) is a statistical technique used to reduce the dimensionality of a dataset while preserving as much variability as possible. PCA achieves this by transforming the original variables into a new set of uncorrelated variables called principal components. Each principal component is a linear combination of the original variables and represents a portion of the total variance in the dataset.
+
+The first principal component captures the maximum variance, the second captures the second most, and so on. PCA is widely used in data visualization, noise reduction, and feature extraction.
+
+# Turtle Data and PCA Analysis
+
+We used a dataset of turtle shells that includes measurements of length, width, and height. The dataset is divided into two groups: female and male turtles. The goal of applying PCA to both groups is to understand the primary directions of variability in the shell measurements.
+
+Here is the symmetric turtle shell image used in the analysis:
+
+```{r setup, echo=FALSE, warning=FALSE, message=FALSE}
+# Load required libraries
+library(dplyr)
+library(magick)
+
+# Download and process the turtle shell image
+turtleShell_URL <- "https://www.oise.utoronto.ca/deepeningknowledge/wp-content/uploads/2019/09/interactive-shell-full-01.png"
+img <- image_read(turtleShell_URL)
+
+# Make the image square (set both dimensions to the smallest dimension)
+info <- image_info(img)
+size <- min(info$width, info$height)
+img_square <- image_crop(img, paste0(size, "x", size, "+0+0")) %>%
+  image_resize(paste0(250, "x", 200, "!")) # To make as symmetrical as possible
+
+# Display the symmetric turtle shell image
+print(img_square)
+```
+
+# PCA Analysis Results
+PCA was performed separately on the female and male turtle data. Below are the numerical values of the principal components for each group, derived from the original variables (length, width, and height).
+
+## Female Turtles PCA
+``` {r echo=FALSE, warning=FALSE, message=FALSE}
+# Read the data
+data_path <- "C:\\Users\\poket\\Documents\\Documents in Windows\\Statistics\\Classes\\Thu - Multivariate\\turtledata.csv"
+turtle <- read.csv(data_path, header = TRUE, sep = ";")
+
+# (optional) Function to make each of the largest magnitude entry of the principal components positive
+adjust_pca_loadings <- function(pca_object) {
+  # Loop through each principal component
+  for (i in 1:ncol(pca_object$loadings)) {
+    # Find the index of the largest magnitude entry
+    max_index <- which.max(abs(pca_object$loadings[, i]))
+    
+    # If the largest magnitude entry is negative, multiply the entire component by -1
+    if (pca_object$loadings[max_index, i] < 0) {
+      pca_object$loadings[, i] <- -pca_object$loadings[, i]
+      pca_object$scores[, i] <- -pca_object$scores[, i]  # Also adjust the PCA scores
+    }
+  }
+  
+  return(pca_object)
+}
+
+
+# Filter female turtles data and perform PCA
+xx_turtles <- turtle %>% filter(female == 1) %>% select(-female)
+xx_PCA <- princomp(xx_turtles, cor = FALSE)
+# Ensure the largest magnitude entry is positive
+xx_PCA <- adjust_pca_loadings(xx_PCA)
+# Display PCA summary for female turtles
+summary(xx_PCA)
+```
+## Male Turtles PCA
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+
+# Filter male turtles data and perform PCA
+xy_turtles <- turtle %>% filter(female == 0) %>% select(-female)
+xy_PCA <- princomp(xy_turtles, cor = FALSE)
+# Ensure the largest magnitude entry is positive
+xy_PCA <- adjust_pca_loadings(xy_PCA)
+# Display PCA summary for male turtles
+summary(xy_PCA)
+```
+
+## Scree plots
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+par(mfrow = c(1, 2)) 
+# Scree plot for Female Turtles PCA using screeplot()
+screeplot(xx_PCA, type = "barplot", main = "Female Turtles PCA")
+
+# Scree plot for Male Turtles PCA using screeplot()
+screeplot(xy_PCA, type = "barplot", main = "Male Turtles PCA")
+```
+
+## Heatmap of Loadings for Female Turtles PCA
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+
+create_heatmap <- function(pca_object, title, components = 1:3) {
+  # Load necessary libraries
+  library(reshape2)
+  library(ggplot2)
+  
+  # Prepare data for heatmap
+  loadings <- as.data.frame(pca_object$loadings[, components])  # Select specified components
+  loadings$variable <- rownames(loadings)
+  
+  # Melt the data frame to long format for ggplot
+  melted_loadings <- melt(loadings, id.vars = "variable", variable.name = "PrincipalComponent", value.name = "Loading")
+  
+  # Plot heatmap with numerical values in each box with conditional text color
+  heatmap_plot <- ggplot(melted_loadings, aes(x = PrincipalComponent, y = variable, fill = Loading)) +
+    geom_tile() +
+    scale_fill_gradient2(low = "blue", high = "red", mid = "white") +
+    geom_text(aes(label = round(Loading, 2), color = Loading > 0), size = 4) +  # Conditional color: white if value <= 0, black if > 0
+    scale_color_manual(values = c("white", "black")) +  # Specify colors for text
+    labs(title = title, x = "Principal Component", y = "Variable") +
+    coord_fixed() +  # Make grid cells have equal width and height
+    theme_minimal() +  # Use a minimal theme for better clarity
+    theme(legend.position = "none",  # Remove legend for text color
+          plot.title = element_text(hjust = 0.5))  # Center the title
+  
+  return(heatmap_plot)
+}
+
+
+# Generate heatmap for Female and Male Turtles
+heatmap_female <- create_heatmap(xx_PCA, "Female Turtles PCA")
+heatmap_male <- create_heatmap(xy_PCA, "Male Turtles PCA")
+
+# Combine the two heatmaps side by side using patchwork
+library(patchwork)
+heatmap_female + heatmap_male
+```
+
+
+
+# Visual Representation of PCA on Turtle Shells
+The composite image below visually represents the PCA-transformed turtle shells. The transformations are applied separately for female and male turtles, with each row corresponding to the principal component transformations of one group. In the heatmap, brighter colors indicate higher values for the height variable, while darker colors indicate lower values.
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+# Function to create transformed images based on PCA loadings
+create_transformed_images <- function(pca_result, img_square, display_size) {
+  loadings <- pca_result$loadings
+  transformed_images <- list()
+  
+  for (i in 1:3) {
+    # Apply transformations based on PCA loadings for the i-th principal component
+    img_transformed <- img_square %>%
+      image_scale(paste0(100 * abs(loadings[2, i]), "%x", 100 * abs(loadings[1, i]), "%")) %>%
+      image_modulate(brightness = 100 + 50 * loadings[3, i])  # Adjust brightness based on height loading
+    
+    # Resize the transformed image to the desired display size
+    img_display <- image_scale(img_transformed, paste0(display_size, "x", display_size))
+    
+    # Add title to the image
+    img_with_title <- image_annotate(img_display, 
+                                     text = paste("PC", i),
+                                     size = 20,
+                                     color = "red",
+                                     boxcolor = "white",
+                                     degrees = 0,
+                                     location = "+10+10")
+    
+    # Add the image to our list
+    transformed_images[[i]] <- img_with_title
+  }
+  
+  return(transformed_images)
+}
+
+# Set the desired display size for each image (in pixels)
+display_size <- 180  # You can adjust this value as needed
+
+# Generate transformed images for female turtles (first row)
+female_transformed_images <- create_transformed_images(xx_PCA, img_square, display_size)
+
+# Generate transformed images for male turtles (second row)
+male_transformed_images <- create_transformed_images(xy_PCA, img_square, display_size)
+
+# Combine images for each row
+female_row_image <- image_append(do.call(c, female_transformed_images))
+male_row_image <- image_append(do.call(c, male_transformed_images))
+
+# Add labels for "Female" and "Male" to each row
+female_row_image <- image_annotate(female_row_image, 
+                                   text = "Female", 
+                                   size = 30, 
+                                   color = "blue", 
+                                   boxcolor = "white", 
+                                   location = "+10-20")
+male_row_image <- image_annotate(male_row_image, 
+                                 text = "Male", 
+                                 size = 30, 
+                                 color = "blue", 
+                                 boxcolor = "white", 
+                                 location = "+10-20")
+
+# Combine both rows vertically
+combined_image <- image_append(c(female_row_image, male_row_image), stack = TRUE)
+
+# Display the final composite image
+print(combined_image)
+
+
+```
+
+# Conclusion
+PCA effectively identifies the primary modes of variation in the shell dimensions of both female and male turtles. The visual transformations based on PCA loadings provide an intuitive understanding of how each principal component influences the shape and appearance of the turtle shells.
