@@ -94,7 +94,7 @@ screeplot(xx_PCA, type = "barplot", main = "Female Turtles PCA")
 screeplot(xy_PCA, type = "barplot", main = "Male Turtles PCA")
 ```
 
-## Heatmap of Loadings for Female Turtles PCA
+## Heatmap of Loadings for Turtles PCA
 ```{r echo=FALSE, warning=FALSE, message=FALSE}
 
 create_heatmap <- function(pca_object, title, components = 1:3) {
