@@ -207,3 +207,9 @@ print(combined_image)
 
 # Conclusion
 PCA effectively identifies the primary modes of variation in the shell dimensions of both female and male turtles. The visual transformations based on PCA loadings provide an intuitive understanding of how each principal component influences the shape and appearance of the turtle shells.
+
+## Access the R Markdown Script
+
+You can access the R Markdown (RMD) script used to generate this analysis on GitHub. Click the link below to view or download the source code:
+
+- [GitHub: 2024-09-07-turtlesPCA-RMD.Rmd](https://github.com/Aic-Ma/Statistics/blob/Multivariate-Analysis/2024-09-07-turtlesPCA-RMD.Rmd)
